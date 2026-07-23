@@ -12,6 +12,7 @@ class DrowsinessDetector(VideoTransformerBase):
     def __init__(self):
         self.eye_status = 0
         self.yawn_status = 0
+        self.alarm = False
 
     def recv(self, frame):
         frame = frame.to_ndarray(format="bgr24")
@@ -19,7 +20,7 @@ class DrowsinessDetector(VideoTransformerBase):
         left_eye_frame, right_eye_frame, mouth_frame= preprocess_frame(frame, left_eye_coordinates, right_eye_coordinates, mouth_coordinates)
         self.eye_status = eye_closure_detection(left_eye_frame, right_eye_frame)
         self.yawn_status = yawn_detection(mouth_frame)
-        check_drowsiness(self.eye_status, self.yawn_status)
+        self.alarm = check_drowsiness(self.eye_status, self.yawn_status)
         return av.VideoFrame.from_ndarray(frame, format="bgr24")
 def main():
     st.set_page_config(
@@ -42,6 +43,7 @@ def main():
         if ctx.video_processor:
             eye_status = ctx.video_processor.eye_status
             yawn_status = ctx.video_processor.yawn_status
+            alarm = ctx.video_processor.alarm
             ear_col = "green" if eye_status == 1 else "red"
             st.metric(label="Eye Status", value="Open" if eye_status == 1 else "Closed", delta_color=ear_col)
             yawn_col = "green" if yawn_status == 0 else "red"
@@ -50,6 +52,11 @@ def main():
                 st.warning("Yawning Detected!")
             else:
                 st.success("No Yawning")
+            if alarm:
+                st.error("⚠️ DROWSINESS DETECTED!")
+            with open("alarm.mp3", "rb") as f:
+                audio_bytes = f.read()
+            st.audio(audio_bytes, format="audio/mp3", autoplay=True)
 
 if __name__ == '__main__':
     main()

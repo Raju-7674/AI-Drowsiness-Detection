@@ -1,7 +1,6 @@
 streamlit
-mediapipe
+dlib
 opencv-python
-tensorflow
+tflite-runtime
 numpy
-Pillow
-pygame
+av
