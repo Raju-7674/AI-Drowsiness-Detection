@@ -162,7 +162,7 @@ The Streamlit dashboard provides:
 Clone the repository:
 
 ```bash
-git clone https://github.com/Raju-7674/AI-Driver-Drowsiness-Detection.git
+git clone https://github.com/Raju-7674/AI-Drowsiness-Detection.git
 ```
 
 Navigate to the project directory:
