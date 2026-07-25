@@ -2,5 +2,5 @@ streamlit
 dlib
 opencv-python
 tflite-runtime
-numpy
+numpy==1.26.4
 av
