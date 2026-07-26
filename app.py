@@ -14,12 +14,10 @@ import cv2
 from collections import deque
 import os
 
-
 @st.cache_data(show_spinner=False)
 def load_alarm_audio_b64():
     alarm_path = Path(__file__).resolve().parent / "alarm.mp3"
     return base64.b64encode(alarm_path.read_bytes()).decode("utf-8")
-
 
 def render_alarm_audio():
     audio_b64 = load_alarm_audio_b64()
@@ -40,7 +38,6 @@ def render_alarm_audio():
         scrolling=False,
     )
 
-
 class DrowsinessDetector(VideoTransformerBase):
     def __init__(self):
         self.eye_status = None
@@ -58,8 +55,7 @@ class DrowsinessDetector(VideoTransformerBase):
 
     def recv(self, frame):
         frame = frame.to_ndarray(format="bgr24")
-        frame = cv2.flip(frame, 1)  # Flip the frame horizontally for a mirror effect
-
+        frame = cv2.flip(frame, 1)
         try:
             res = detect_landmarks(frame)
             if len(res) == 6:
@@ -69,25 +65,12 @@ class DrowsinessDetector(VideoTransformerBase):
                 left_ear = None
                 right_ear = None
             print("Landmarks:", left_eye_coordinates, right_eye_coordinates, mouth_coordinates, "EARs:", left_ear, right_ear)
-
-        # No face detected -> just return the current frame
-            if (
-                left_eye_coordinates is None
-                or right_eye_coordinates is None
-                or mouth_coordinates is None
-            ):
+            if (left_eye_coordinates is None or right_eye_coordinates is None or mouth_coordinates is None):
                 self.eye_status = None
                 self.yawn_status = None
                 self.alarm = False
                 return av.VideoFrame.from_ndarray(frame, format="bgr24")
-
-            left_eye_frame, right_eye_frame, mouth_frame = preprocess_frame(
-                frame,
-                left_eye_coordinates,
-                right_eye_coordinates,
-                mouth_coordinates,
-            )
-
+            left_eye_frame, right_eye_frame, mouth_frame = preprocess_frame(frame,left_eye_coordinates,right_eye_coordinates,mouth_coordinates)
             if left_eye_frame is not None and right_eye_frame is not None:
                 print('Eye frames:', left_eye_frame.shape, right_eye_frame.shape)
                 try:
@@ -97,7 +80,6 @@ class DrowsinessDetector(VideoTransformerBase):
                     mean_closed = (left_closed_prob + right_closed_prob) / 2.0
                     self.eye_closed_probs.append(mean_closed)
                     mean_closed_smoothed = sum(self.eye_closed_probs) / len(self.eye_closed_probs)
-                    # EAR fallback: eyes closed if both EARs are below threshold
                     EAR_THRESHOLD = 0.20
                     ear_closed = False
                     if left_ear is not None and right_ear is not None:
@@ -109,11 +91,9 @@ class DrowsinessDetector(VideoTransformerBase):
                     self.eye_status = None
                     self.eye_left = None
                     self.eye_right = None
-                # save debug crops for inspection (limited)
                 try:
                     dbg_dir = Path(__file__).resolve().parent.parent / 'debug'
                     os.makedirs(dbg_dir, exist_ok=True)
-                    # rotate index based on existing files
                     existing = len(list(dbg_dir.glob('left_*.png')))
                     if existing < 10:
                         left_path = dbg_dir / f'left_{existing}.png'
@@ -127,22 +107,16 @@ class DrowsinessDetector(VideoTransformerBase):
                 self.eye_status = None
                 self.eye_left = None
                 self.eye_right = None
-
             if mouth_frame is not None:
                 print('Mouth frame:', mouth_frame.shape)
                 try:
                     self.yawn_status, self.yawn_score, self.mouth_ratio = yawn_detection(mouth_frame, mouth_coordinates)
-                    # temporal smoothing
                     if self.yawn_score is not None:
                         self.yawn_scores.append(self.yawn_score)
                     if self.mouth_ratio is not None:
                         self.mouth_ratios.append(self.mouth_ratio)
                     mean_score = sum(self.yawn_scores) / len(self.yawn_scores) if len(self.yawn_scores) > 0 else 0.0
                     mean_ratio = sum(self.mouth_ratios) / len(self.mouth_ratios) if len(self.mouth_ratios) > 0 else None
-                    # Decision rule:
-                    # - If model score is very high, flag yawn
-                    # - Else if model score is moderately high AND mouth ratio indicates openness, flag yawn
-                    # - Otherwise, do not flag
                     if mean_score > 0.45:
                         smoothed_yawn = 1
                     elif mean_score > 0.37 and (mean_ratio is not None and mean_ratio > 0.20):
@@ -161,24 +135,15 @@ class DrowsinessDetector(VideoTransformerBase):
                 self.yawn_status = None
                 self.yawn_score = None
                 self.mouth_ratio = None
-
-            # use smoothed statuses for alarm
             use_eye = self.smoothed_eye_status if self.smoothed_eye_status is not None else self.eye_status
             use_yawn = self.smoothed_yawn_status if self.smoothed_yawn_status is not None else self.yawn_status
             self.alarm = check_drowsiness(use_eye, use_yawn)
             print("Alarm:", self.alarm)
         except Exception as e:
             print("Video processing error:", e)
-
         return av.VideoFrame.from_ndarray(frame, format="bgr24")
 def main():
-    st.set_page_config(
-        page_title="Drowsiness Detection System",
-        page_icon="👁️",
-        layout="wide",
-    )
-    # Simple automatic refresh to ensure UI updates without extra clicks.
-    # NOTE: This reloads the whole page every 2s (simple but can feel choppy).
+    st.set_page_config(page_title="Drowsiness Detection System",page_icon="👁️",layout="wide")
     components.html(
         """
         <script>
@@ -188,9 +153,7 @@ def main():
         height=0,
     )
     if "sound_enabled" not in st.session_state:
-        # enable sound by default so alarm can play automatically when detected
         st.session_state.sound_enabled = True
-
     st.title("Drowsiness Detection System")
     col1, col2 = st.columns([2,1])
     with col1:
@@ -207,14 +170,12 @@ def main():
             eye_status = ctx.video_processor.smoothed_eye_status if ctx.video_processor.smoothed_eye_status is not None else ctx.video_processor.eye_status
             yawn_status = ctx.video_processor.smoothed_yawn_status if ctx.video_processor.smoothed_yawn_status is not None else ctx.video_processor.yawn_status
             alarm = ctx.video_processor.alarm
-
             if eye_status is None:
                 st.metric(label="Eye Status", value="Face not detected", delta_color="yellow")
             else:
                 ear_col = "green" if eye_status == 0 else "red"
                 st.metric(label="Eye Status", value="Open" if eye_status == 0 else "Closed", delta_color=ear_col)
                 st.caption(f"Eye raw predictions: left={ctx.video_processor.eye_left}, right={ctx.video_processor.eye_right}")
-
             if yawn_status is None:
                 st.metric(label="Yawn Status", value="Face not detected", delta_color="yellow")
             else:
@@ -225,13 +186,9 @@ def main():
                     st.warning("Yawning Detected!")
                 else:
                     st.success("No Yawning")
-
             if eye_status is None or yawn_status is None:
                 st.info("Waiting for a clear face/mouth view...")
-
-            # allow user to enable/disable alarm sound
             st.checkbox("Enable warning sound", value=st.session_state.sound_enabled, key="sound_enabled")
-
             if alarm:
                 st.error("⚠️ DROWSINESS DETECTED!")
                 if st.session_state.sound_enabled:
