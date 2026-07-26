@@ -1,0 +1,10 @@
+streamlit==1.28.1
+streamlit-webrtc==0.47.0
+opencv-python==4.8.1.78
+numpy==1.26.4
+av==10.0.0
+# TFLite runtime from Google Coral index (more reliable on Windows)
+--index-url https://google-coral.github.io/py-repo/tflite_runtime
+tflite_runtime==2.14.0
+# Install dlib from conda-forge for Windows (or use: pip install dlib)
+# If pip install fails, use: conda install -c conda-forge dlib
