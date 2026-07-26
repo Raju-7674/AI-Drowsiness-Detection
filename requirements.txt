@@ -1,6 +1,11 @@
-streamlit
-dlib
-opencv-python
-tflite-runtime
+streamlit==1.28.1
+streamlit-webrtc==0.47.0
+opencv-python==4.8.1.78
 numpy==1.26.4
-av
+av==10.0.0
+tflite-runtime==2.14.0
+# dlib can be installed via pip or conda
+# For Linux: pip install dlib (usually works fine)
+# For Windows: Use conda or pre-compiled wheel
+# conda install -c conda-forge dlib
+dlib>=19.24.0
